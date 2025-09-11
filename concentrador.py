@@ -90,6 +90,19 @@ tiempos = deque([])
 timebase_bin = [0xFF, 0xFF, 0xFF]
 timebase = 16777215
 
+# --- Verifica valores Inf o NaN y los convierte a Null para compatibilidad con DynamoDB
+def sanitize_float(value, param_name=""):
+    """
+    Revisa si un valor es infinito o NaN.
+    Si lo es, imprime un mensaje de debug y devuelve None.
+    Si no, lo convierte a Decimal de forma segura.
+    """
+    if math.isinf(value) or math.isnan(value):
+        # Imprime un mensaje claro indicando qué parámetro falló
+        print(f"DEBUG: Valor inválido (valor={value}) detectado en el parámetro '{param_name}'. Se reemplazará por null.")
+        return None
+    return Decimal(str(value))
+
 def parsear_trama_de_datos_pdc(frame_data):
     """
     Decodifica una trama de datos binaria consolidada y devuelve un diccionario 
@@ -122,26 +135,24 @@ def parsear_trama_de_datos_pdc(frame_data):
             data_offset += 2  # STAT
 
             phasors = []
-            for _ in range(num_fasores):
+            for i in range(num_fasores):
                 values = struct.unpack('!ff', payload[data_offset:data_offset+8])
                 if es_rectangular:
-                    # Convertimos a Decimal usando un string intermedio para no perder precisión
                     phasors.append({
-                        'real': Decimal(str(values[0])), 
-                        'imag': Decimal(str(values[1]))
+                        'real': sanitize_float(values[0], f"PMU_{pmu_id}_Phasor_{i+1}_Real"), 
+                        'imag': sanitize_float(values[1], f"PMU_{pmu_id}_Phasor_{i+1}_Imag")
                     })
                 else:
                     phasors.append({
-                        'mag': Decimal(str(values[0])), 
-                        'ang': Decimal(str(values[1]))
+                        'mag': sanitize_float(values[0], f"PMU_{pmu_id}_Phasor_{i+1}_Mag"), 
+                        'ang': sanitize_float(values[1], f"PMU_{pmu_id}_Phasor_{i+1}_Ang")
                     })
                 data_offset += 8
             pmu_data['phasors'] = phasors
 
             freq, rocof = struct.unpack('!ff', payload[data_offset:data_offset+8])
-            # Convertimos también frecuencia y ROCOF a Decimal
-            pmu_data['frequency'] = Decimal(str(freq))
-            pmu_data['rocof'] = Decimal(str(rocof))
+            pmu_data['frequency'] = sanitize_float(freq, f"PMU_{pmu_id}_Frequency")
+            pmu_data['rocof'] = sanitize_float(rocof, f"PMU_{pmu_id}_ROCOF")
             data_offset += 8
             
             decoded_dict[str(pmu_id)] = pmu_data
