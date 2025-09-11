@@ -99,7 +99,7 @@ def sanitize_float(value, param_name=""):
     """
     if math.isinf(value) or math.isnan(value):
         # Imprime un mensaje claro indicando qué parámetro falló
-        print(f"DEBUG: Valor inválido (valor={value}) detectado en el parámetro '{param_name}'. Se reemplazará por null.")
+        # print(f"DEBUG: Valor inválido (valor={value}) detectado en el parámetro '{param_name}'. Se reemplazará por null.")
         return None
     return Decimal(str(value))
 
