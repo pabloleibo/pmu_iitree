@@ -26,6 +26,7 @@ import sys  # <--- Para poder cerrar el script si hay un error
 
 # --- Variables Globales ---
 db_queue = queue.Queue()
+config_lock = threading.Lock() # Candado global de acceso a config
 
 # table for calculating CRC
 CRC16_XMODEM_TABLE = [
@@ -99,47 +100,51 @@ def parsear_trama_de_datos_pdc(frame_data):
     payload = frame_data[offset:-2]
 
     data_offset = 0
-    for pmu_id in sorted(lista_ids):
-        pmu_data = {}
-        pmu_config_chunk = configs.get(pmu_id)
-        if not pmu_config_chunk:
-            continue
+    # Lectura Protegida de config y lista_ids
+    with config_lock:
+        # Se leen las variables compartidas (lista_ids y configs) dentro del candado
+        # para asegurar que no cambien a mitad de la operación.
+        for pmu_id in sorted(lista_ids):
+            pmu_data = {}
+            pmu_config_chunk = configs.get(pmu_id)
+            if not pmu_config_chunk:
+                continue
 
-        _STN_LEN = 16
-        _IDCODE_SRC_LEN = 2
-        _FORMAT_WORD_OFFSET = _STN_LEN + _IDCODE_SRC_LEN
-        _PHNMR_OFFSET = _FORMAT_WORD_OFFSET + 2
+            _STN_LEN = 16
+            _IDCODE_SRC_LEN = 2
+            _FORMAT_WORD_OFFSET = _STN_LEN + _IDCODE_SRC_LEN
+            _PHNMR_OFFSET = _FORMAT_WORD_OFFSET + 2
 
-        formato_byte = pmu_config_chunk[_FORMAT_WORD_OFFSET + 1]
-        es_rectangular = True if (formato_byte & 0x02) >> 1 else False
-        num_fasores = pmu_config_chunk[_PHNMR_OFFSET] << 8 | pmu_config_chunk[_PHNMR_OFFSET + 1]
+            formato_byte = pmu_config_chunk[_FORMAT_WORD_OFFSET + 1]
+            es_rectangular = True if (formato_byte & 0x02) >> 1 else False
+            num_fasores = pmu_config_chunk[_PHNMR_OFFSET] << 8 | pmu_config_chunk[_PHNMR_OFFSET + 1]
 
-        data_offset += 2  # STAT
+            data_offset += 2  # STAT
 
-        phasors = []
-        for _ in range(num_fasores):
-            values = struct.unpack('!ff', payload[data_offset:data_offset+8])
-            if es_rectangular:
-                # Convertimos a Decimal usando un string intermedio para no perder precisión
-                phasors.append({
-                    'real': Decimal(str(values[0])), 
-                    'imag': Decimal(str(values[1]))
-                })
-            else:
-                phasors.append({
-                    'mag': Decimal(str(values[0])), 
-                    'ang': Decimal(str(values[1]))
-                })
+            phasors = []
+            for _ in range(num_fasores):
+                values = struct.unpack('!ff', payload[data_offset:data_offset+8])
+                if es_rectangular:
+                    # Convertimos a Decimal usando un string intermedio para no perder precisión
+                    phasors.append({
+                        'real': Decimal(str(values[0])), 
+                        'imag': Decimal(str(values[1]))
+                    })
+                else:
+                    phasors.append({
+                        'mag': Decimal(str(values[0])), 
+                        'ang': Decimal(str(values[1]))
+                    })
+                data_offset += 8
+            pmu_data['phasors'] = phasors
+
+            freq, rocof = struct.unpack('!ff', payload[data_offset:data_offset+8])
+            # Convertimos también frecuencia y ROCOF a Decimal
+            pmu_data['frequency'] = Decimal(str(freq))
+            pmu_data['rocof'] = Decimal(str(rocof))
             data_offset += 8
-        pmu_data['phasors'] = phasors
-
-        freq, rocof = struct.unpack('!ff', payload[data_offset:data_offset+8])
-        # Convertimos también frecuencia y ROCOF a Decimal
-        pmu_data['frequency'] = Decimal(str(freq))
-        pmu_data['rocof'] = Decimal(str(rocof))
-        data_offset += 8
-        
-        decoded_dict[str(pmu_id)] = pmu_data
+            
+            decoded_dict[str(pmu_id)] = pmu_data
         
     return decoded_dict
 
@@ -234,8 +239,10 @@ def decodificar_config(data):
     if idcode not in LISTA_PMUS:
         return # si el id no esta en la lista, entonces no quiero datos de esa PMU
 
-    if idcode not in lista_ids:
-        lista_ids.append(idcode)  # agrego IDs a la lista
+    # Escritura Protegida de config y lista_ids
+    with config_lock:
+        if idcode not in lista_ids:
+            lista_ids.append(idcode)  # agrego IDs a la lista
 
     largo_datos_utiles = (data[2] << 8 | data[3])
     configs[idcode] = data[20:(largo_datos_utiles - 4)] # El largo incluye el datarate y el CRC
