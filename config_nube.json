@@ -1,0 +1,9 @@
+{
+  "MQTT_HOST": "a1ddn6piu1sj2t-ats.iot.us-west-2.amazonaws.com",
+  "MQTT_PORT": 8883,
+  "CA_ROOT_CERT_FILE": "AmazonRootCA1.pem",
+  "THING_CERT_FILE": "concentrador_aws-certificate.pem.crt",
+  "THING_PRIVATE_KEY": "concentrador_aws-private.pem.key",
+  "AWS_REGION": "us-west-2",
+  "DYNAMODB_TABLE_NAME": "HistorianIITREE"
+}
