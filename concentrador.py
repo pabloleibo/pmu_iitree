@@ -482,6 +482,13 @@ def on_publish(client, userdata, mid, rc, properties=None):
     # print(f"Publicado mensaje MID: {mid}")
     pass
 
+def on_disconnect(client, userdata, rc, properties=None):
+    """Se ejecuta cuando el cliente se desconecta del broker."""
+    if rc != 0:
+        print(f"Desconexión inesperada (código: {rc}). Esperando 1 segundo para reconectar...")
+    else:
+        print("Desconexión iniciada por el cliente.")
+
 # --- Inicio del Script ---
 
 # --- Carga la configuracion desde JSON ---
@@ -542,6 +549,13 @@ mqttc.on_subscribe = on_subscribe
 mqttc.on_connect = on_connect
 mqttc.on_publish = on_publish
 mqttc.on_message = on_message
+mqttc.on_disconnect = on_disconnect
+
+# --- AÑADE ESTA LÍNEA PARA FORZAR LA ESPERA DE 1 SEGUNDO ---
+# Esto anula la reconexión automática con "backoff" y la
+# reemplaza por un reintento fijo cada 1 segundo.
+mqttc.reconnect_delay_set(min_delay=1, max_delay=1)
+
 print('Cliente MQTT creado.')
 
 # Configure TLS Set
