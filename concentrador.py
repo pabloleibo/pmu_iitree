@@ -90,6 +90,9 @@ tiempos = deque([])
 timebase_bin = [0xFF, 0xFF, 0xFF]
 timebase = 16777215
 
+# Variable de control para reconectar en caso de falla
+fallo_mqtt = 0
+
 # --- Verifica valores Inf o NaN y los convierte a Null para compatibilidad con DynamoDB
 def sanitize_float(value, param_name=""):
     """
@@ -375,7 +378,10 @@ def emitir_config():
     crc = crc_ccitt(frame_config)
     frame_config.extend(crc.to_bytes(2, 'big'))
 
-    mqttc.publish(f"{ID_PDC}", frame_config, qos=0)
+    info = mqttc.publish(f"{ID_PDC}", frame_config, qos=0)
+    # --- VERIFICACIÓN INMEDIATA ---
+    if info.rc != mqtt.MQTT_ERR_SUCCESS:
+        fallo_mqtt = 1
 
 def emitir_datos():
     global timebase
@@ -438,7 +444,11 @@ def emitir_datos():
     frame_data.extend(crc.to_bytes(2, 'big'))
 
     # Publicar en MQTT y guardar la información de retorno
-    mqttc.publish(f"{ID_PDC}", frame_data, qos=0)
+    info = mqttc.publish(f"{ID_PDC}", frame_data, qos=0)
+    # --- VERIFICACIÓN INMEDIATA ---
+    if info.rc != mqtt.MQTT_ERR_SUCCESS:
+        fallo_mqtt = 1
+
 
     # A la cola se envían los datos CRUDOS para que el otro hilo los procese
     item = {
@@ -545,7 +555,7 @@ db_thread = threading.Thread(
 db_thread.start()
 
 # Initiate MQTT Client
-mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2) # Compatible con la mayoria de brokers
+mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, reconnect_on_failure=False) # Compatible con la mayoria de brokers
 mqttc.on_subscribe = on_subscribe
 mqttc.on_connect = on_connect
 mqttc.on_publish = on_publish
@@ -571,6 +581,14 @@ try:
     # Mantener el script corriendo
     while True:
         time.sleep(1)
+        if(fallo_mqtt == 1):
+            mqttc.loop_stop()
+            mqttc.disconnect()
+            time.sleep(1)
+            mqttc.connect(MQTT_HOST, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL)
+            mqttc.loop_start()
+            fallo_mqtt = 0
+
 
 except FileNotFoundError:
     print("Error: No se encontraron los archivos de certificado. Asegúrate de que las rutas son correctas.")
