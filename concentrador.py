@@ -375,7 +375,7 @@ def emitir_config():
     crc = crc_ccitt(frame_config)
     frame_config.extend(crc.to_bytes(2, 'big'))
 
-    mqttc.publish(f"{ID_PDC}", frame_config, qos=1)
+    mqttc.publish(f"{ID_PDC}", frame_config, qos=0)
 
 def emitir_datos():
     global timebase
@@ -437,7 +437,8 @@ def emitir_datos():
     crc = crc_ccitt(frame_data)
     frame_data.extend(crc.to_bytes(2, 'big'))
 
-    mqttc.publish(f"{ID_PDC}", frame_data, qos=1)
+    # Publicar en MQTT y guardar la información de retorno
+    mqttc.publish(f"{ID_PDC}", frame_data, qos=0)
 
     # A la cola se envían los datos CRUDOS para que el otro hilo los procese
     item = {
