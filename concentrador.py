@@ -378,9 +378,12 @@ def emitir_config():
     crc = crc_ccitt(frame_config)
     frame_config.extend(crc.to_bytes(2, 'big'))
 
-    info = mqttc.publish(f"{ID_PDC}", frame_config, qos=0)
-    # --- VERIFICACIÓN INMEDIATA ---
-    if info.rc != mqtt.MQTT_ERR_SUCCESS:
+    try:
+        info = mqttc.publish(f"{ID_PDC}", frame_config, qos=0)
+        # --- VERIFICACIÓN INMEDIATA ---
+        if info.rc != mqtt.MQTT_ERR_SUCCESS:
+            fallo_mqtt = 1
+    except:
         fallo_mqtt = 1
 
 def emitir_datos():
@@ -443,10 +446,13 @@ def emitir_datos():
     crc = crc_ccitt(frame_data)
     frame_data.extend(crc.to_bytes(2, 'big'))
 
-    # Publicar en MQTT y guardar la información de retorno
-    info = mqttc.publish(f"{ID_PDC}", frame_data, qos=0)
-    # --- VERIFICACIÓN INMEDIATA ---
-    if info.rc != mqtt.MQTT_ERR_SUCCESS:
+    try:
+        # Publicar en MQTT y guardar la información de retorno
+        info = mqttc.publish(f"{ID_PDC}", frame_data, qos=0)
+        # --- VERIFICACIÓN INMEDIATA ---
+        if info.rc != mqtt.MQTT_ERR_SUCCESS:
+            fallo_mqtt = 1
+    except:
         fallo_mqtt = 1
 
 
@@ -487,6 +493,11 @@ def on_connect(client, userdata, flags, rc, properties=None):
             client.subscribe(topic, 0)
     else:
         print(f"Fallo en la conexión, código de retorno: {rc}")
+        fallo_mqtt = 1
+
+def on_connect_fail(client, userdata, flags, rc, properties=None):
+    fallo_mqtt = 1
+    
 
 def on_publish(client, userdata, mid, rc, properties=None):
     # Descomentar si se necesita depurar cada publicación
@@ -561,6 +572,7 @@ mqttc.on_connect = on_connect
 mqttc.on_publish = on_publish
 mqttc.on_message = on_message
 mqttc.on_disconnect = on_disconnect
+mqttc.on_connect_fail = on_connect_fail
 
 # --- AÑADE ESTA LÍNEA PARA FORZAR LA ESPERA DE 1 SEGUNDO ---
 # Esto anula la reconexión automática con "backoff" y la
@@ -575,6 +587,7 @@ try:
                   cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLSv1_2, ciphers=None)
     print('Certificados TLS configurados.')
     # Connect with MQTT Broker
+    fallo_mqtt = 0
     mqttc.connect(MQTT_HOST, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL)
     mqttc.loop_start()
 
@@ -585,9 +598,10 @@ try:
             mqttc.loop_stop()
             mqttc.disconnect()
             time.sleep(1)
+            fallo_mqtt = 0
             mqttc.connect(MQTT_HOST, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL)
             mqttc.loop_start()
-            fallo_mqtt = 0
+            
 
 
 except FileNotFoundError:
