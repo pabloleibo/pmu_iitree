@@ -231,8 +231,8 @@ def parsear_trama_de_datos_pdc(frame_data):
             pmu_data['rocof'] = sanitize_float(rocof)
             
             decoded_dict[str(pmu_id)] = pmu_data
-            print(phasors)
-            print(decoded_dict)
+            #print(phasors)
+            #print(decoded_dict)
         
     return decoded_dict
 
