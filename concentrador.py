@@ -434,14 +434,14 @@ def decodificar_config(data):
     formato_analog_txt = "32-bit float" if (formato & 0x04) >> 2 else "16-bit integer"
     formato_fasor_txt = "Rectangular (float)" if (formato & 0x02) >> 1 else "Polar (float)"
     
-    #print(f"  Nombre de Estación: {nom_estacion}")
-    #print(f"  Formato de Frecuencia/ROCOF: {formato_freq_txt}")
-    #print(f"  Formato de Analógicos: {formato_analog_txt}")
-    #print(f"  Formato de Fasores: {formato_fasor_txt}")
-    #print(f"  Número de Fasores: {num_fasores}")
-    #print(f"  Número de Valores Analógicos: {num_analog}")
-    #print(f"  Número de Canales Digitales: {num_digital}")
-    #print("="*50 + "\n")
+    print(f"  Nombre de Estación: {nom_estacion}")
+    print(f"  Formato de Frecuencia/ROCOF: {formato_freq_txt}")
+    print(f"  Formato de Analógicos: {formato_analog_txt}")
+    print(f"  Formato de Fasores: {formato_fasor_txt}")
+    print(f"  Número de Fasores: {num_fasores}")
+    print(f"  Número de Valores Analógicos: {num_analog}")
+    print(f"  Número de Canales Digitales: {num_digital}")
+    print("="*50 + "\n")
     return True
 
 def _crc16(data, crc, table):
