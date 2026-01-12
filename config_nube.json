@@ -1,0 +1,9 @@
+{
+  "MQTT_HOST": "100.22.160.5",
+  "MQTT_PORT": 8883,
+  "CA_ROOT_CERT_FILE": "ca.crt",
+  "THING_CERT_FILE": "cliente_pdc.crt",
+  "THING_PRIVATE_KEY": "cliente_pdc.key",
+  "AWS_REGION": "us-west-2",
+  "FIREHOSE_STREAM_NAME": "stream-pmu-firehose"
+}
