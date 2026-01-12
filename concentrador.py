@@ -107,7 +107,7 @@ fallo_mqtt = 0
 
 
 # --- Verifica valores Inf o NaN y los convierte a None para compatibilidad con Json
-def sanitize_float(value, param_name=""):
+def sanitize_float(value):
     """
     Revisa si un valor es infinito o NaN. Devuelve float o None (JSON standard).
     """
@@ -151,23 +151,25 @@ def parsear_trama_de_datos_pdc(frame_data):
                 values = struct.unpack('!ff', payload[data_offset:data_offset+8])
                 if es_rectangular:
                     phasors.append({
-                        'real': sanitize_float(values[0], f"PMU_{pmu_id}_Phasor_{i+1}_Real"), 
-                        'imag': sanitize_float(values[1], f"PMU_{pmu_id}_Phasor_{i+1}_Imag")
+                        'real': sanitize_float(values[0]), 
+                        'imag': sanitize_float(values[1])
                     })
                 else:
                     phasors.append({
-                        'mag': sanitize_float(values[0], f"PMU_{pmu_id}_Phasor_{i+1}_Mag"), 
-                        'ang': sanitize_float(values[1], f"PMU_{pmu_id}_Phasor_{i+1}_Ang")
+                        'mag': sanitize_float(values[0]), 
+                        'ang': sanitize_float(values[1])
                     })
                 data_offset += 8
             pmu_data['phasors'] = phasors
 
             freq, rocof = struct.unpack('!ff', payload[data_offset:data_offset+8])
-            pmu_data['frequency'] = sanitize_float(freq, f"PMU_{pmu_id}_Frequency")
-            pmu_data['rocof'] = sanitize_float(rocof, f"PMU_{pmu_id}_ROCOF")
+            pmu_data['frequency'] = sanitize_float(freq)
+            pmu_data['rocof'] = sanitize_float(rocof)
             data_offset += 8
             
             decoded_dict[str(pmu_id)] = pmu_data
+            print(phasors)
+            print(decoded_dict)
         
     return decoded_dict
 
@@ -434,14 +436,14 @@ def decodificar_config(data):
     formato_analog_txt = "32-bit float" if (formato & 0x04) >> 2 else "16-bit integer"
     formato_fasor_txt = "Rectangular (float)" if (formato & 0x02) >> 1 else "Polar (float)"
     
-    print(f"  Nombre de Estación: {nom_estacion}")
-    print(f"  Formato de Frecuencia/ROCOF: {formato_freq_txt}")
-    print(f"  Formato de Analógicos: {formato_analog_txt}")
-    print(f"  Formato de Fasores: {formato_fasor_txt}")
-    print(f"  Número de Fasores: {num_fasores}")
-    print(f"  Número de Valores Analógicos: {num_analog}")
-    print(f"  Número de Canales Digitales: {num_digital}")
-    print("="*50 + "\n")
+    #print(f"  Nombre de Estación: {nom_estacion}")
+    #print(f"  Formato de Frecuencia/ROCOF: {formato_freq_txt}")
+    #print(f"  Formato de Analógicos: {formato_analog_txt}")
+    #print(f"  Formato de Fasores: {formato_fasor_txt}")
+    #print(f"  Número de Fasores: {num_fasores}")
+    #print(f"  Número de Valores Analógicos: {num_analog}")
+    #print(f"  Número de Canales Digitales: {num_digital}")
+    #print("="*50 + "\n")
     return True
 
 def _crc16(data, crc, table):
