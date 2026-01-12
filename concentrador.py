@@ -140,32 +140,95 @@ def parsear_trama_de_datos_pdc(frame_data):
             _FORMAT_WORD_OFFSET = _STN_LEN + _IDCODE_SRC_LEN
             _PHNMR_OFFSET = _FORMAT_WORD_OFFSET + 2
 
-            formato_byte = pmu_config_chunk[_FORMAT_WORD_OFFSET + 1]
-            es_rectangular = True if (formato_byte & 0x02) >> 1 else False
+
+            # --- 1. LECTURA DE CONFIGURACIÓN ---
+            # Offsets fijos dentro del chunk de configuración
+            _STN_LEN = 16
+            _IDCODE_SRC_LEN = 2
+            _FORMAT_WORD_OFFSET = _STN_LEN + _IDCODE_SRC_LEN # Byte 18
+            _PHNMR_OFFSET = _FORMAT_WORD_OFFSET + 2          # Byte 20
+            _ANNMR_OFFSET = _PHNMR_OFFSET + 2                # Byte 22
+            _DGNMR_OFFSET = _ANNMR_OFFSET + 2                # Byte 24
+
+            # Cantidad de canales
             num_fasores = pmu_config_chunk[_PHNMR_OFFSET] << 8 | pmu_config_chunk[_PHNMR_OFFSET + 1]
+            num_analog  = pmu_config_chunk[_ANNMR_OFFSET] << 8 | pmu_config_chunk[_ANNMR_OFFSET + 1]
+            num_digital = pmu_config_chunk[_DGNMR_OFFSET] << 8 | pmu_config_chunk[_DGNMR_OFFSET + 1]
+
+
+            formato_byte = pmu_config_chunk[_FORMAT_WORD_OFFSET + 1]
+            #Bits de formato
+            es_rectangular = (formato_byte & 0x01) == 0    # Bit 0: 0=Rect, 1=Polar
+            es_fasor_float = (formato_byte & 0x02) >> 1    # Bit 1: 0=Int, 1=Float
+            es_freq_float  = (formato_byte & 0x08) >> 3    # Bit 3: 0=Int, 1=Float
+
+            # --- 2. CÁLCULO DE POSICIÓN DE FACTORES DE ESCALA (PHUNIT) ---
+            # Header fijo (26 bytes) + Nombres de canales (16 bytes c/u)
+            # Después de eso vienen los PHUNIT
+            total_canales = num_fasores + num_analog + num_digital
+            phunit_start_offset = 26 + (total_canales * 16)
 
             data_offset += 2  # STAT
 
             phasors = []
             for i in range(num_fasores):
-                values = struct.unpack('!ff', payload[data_offset:data_offset+8])
+                val1 = 0.0
+                val2 = 0.0
+                # --- CASO A: FLOTANTE (IEEE 754) ---
+                if es_fasor_float:
+                    # 8 bytes (4+4)
+                    values = struct.unpack('!ff', payload[data_offset:data_offset+8])
+                    val1, val2 = values[0], values[1]
+                    data_offset += 8
+
+                # --- CASO B: ENTERO (16-bit con Escala) ---
+                else:
+                    # 4 bytes (2+2)
+                    values = struct.unpack('!hh', payload[data_offset:data_offset+4])
+                    data_offset += 4
+                    
+                    # Calcular Escala PHUNIT para este fasor 'i'
+                    # PHUNIT son 4 bytes: Byte 0 (tipo), Bytes 1-3 (factor 24-bit)
+                    idx = phunit_start_offset + (i * 4)
+                    raw_scale = (pmu_config_chunk[idx+1] << 16) | (pmu_config_chunk[idx+2] << 8) | pmu_config_chunk[idx+3]
+                    scale = raw_scale * 0.00001
+                    
+                    if es_rectangular:
+                        # Rectangular: Ambos componentes usan PHUNIT
+                        val1 = values[0] * scale
+                        val2 = values[1] * scale
+                    else:
+                        # Polar: Magnitud usa PHUNIT, Ángulo usa escala fija (radianes)
+                        val1 = values[0] * scale
+                        val2 = values[1] * 0.0001
+
+
+                # Guardar resultado
                 if es_rectangular:
                     phasors.append({
-                        'real': sanitize_float(values[0]), 
-                        'imag': sanitize_float(values[1])
+                        'real': sanitize_float(val1), 
+                        'imag': sanitize_float(val2)
                     })
                 else:
                     phasors.append({
-                        'mag': sanitize_float(values[0]), 
-                        'ang': sanitize_float(values[1])
+                        'mag': sanitize_float(val1), 
+                        'ang': sanitize_float(val2)
                     })
-                data_offset += 8
+
             pmu_data['phasors'] = phasors
 
-            freq, rocof = struct.unpack('!ff', payload[data_offset:data_offset+8])
+            # --- 3. FRECUENCIA Y ROCOF ---
+            if es_freq_float:
+                freq, rocof = struct.unpack('!ff', payload[data_offset:data_offset+8])
+                data_offset += 8
+            else:
+                freq_int, rocof_int = struct.unpack('!hH', payload[data_offset:data_offset+4]) # h=int16, H=uint16? C37.118 dice int16 ambos usualmente.
+                freq = freq_int / 1000.0
+                rocof = rocof_int / 100.0
+                data_offset += 4
+
             pmu_data['frequency'] = sanitize_float(freq)
             pmu_data['rocof'] = sanitize_float(rocof)
-            data_offset += 8
             
             decoded_dict[str(pmu_id)] = pmu_data
             print(phasors)
