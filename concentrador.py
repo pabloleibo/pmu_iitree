@@ -676,7 +676,6 @@ try:
     THING_CERT_FILE = config_nube['THING_CERT_FILE']
     THING_PRIVATE_KEY = config_nube['THING_PRIVATE_KEY']
     AWS_REGION = config_nube['AWS_REGION']
-    DYNAMODB_TABLE_NAME = config_nube['DYNAMODB_TABLE_NAME']
     
     # Parámetros del PDC
     ID_PDC = config_pdc['ID_PDC']
