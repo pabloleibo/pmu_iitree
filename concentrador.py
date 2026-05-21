@@ -617,7 +617,7 @@ def emitir_datos():
                     dummy_data[0:2] = (0x4000).to_bytes(2, 'big')
                 datos_data.extend(dummy_data)    
                 # --- REGISTRAR PMU FALTANTE ---
-                pmus_faltantes.append(id_pmu)
+                # pmus_faltantes.append(id_pmu)
         except (ValueError, IndexError, KeyError):
             # Genero datos en blanco si algo falla
             # datos_data.extend(bytearray(longitud_datos.get(id_pmu, 0)))
@@ -628,7 +628,7 @@ def emitir_datos():
                 dummy_data[0:2] = (0x4000).to_bytes(2, 'big')
             datos_data.extend(dummy_data)    
             # --- REGISTRAR PMU FALTANTE ---
-            pmus_faltantes.append(id_pmu)
+            # pmus_faltantes.append(id_pmu)
 
     # Elimino el dato del diccionario para liberar memoria
     del datos[tiempo]
@@ -663,10 +663,10 @@ def emitir_datos():
             fallo_mqtt = 1
 
         # --- NUEVO: IMPRIMIR REPORTE DE FALTANTES EN CONSOLA ---
-        if pmus_faltantes:
-            # Convertimos el tiempo (float) a un texto legible (ej: 2026-05-21 14:09:29.123)
-            ts_str = datetime.fromtimestamp(tiempo).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-            print(f"[{ts_str}] ALERTA - Trama enviada con relleno. Faltan datos de PMUs: {pmus_faltantes}")
+        # if pmus_faltantes:
+        #     # Convertimos el tiempo (float) a un texto legible (ej: 2026-05-21 14:09:29.123)
+        #     ts_str = datetime.fromtimestamp(tiempo).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        #     print(f"[{ts_str}] ALERTA - Trama enviada con relleno. Faltan datos de PMUs: {pmus_faltantes}")
     except:
         fallo_mqtt = 1
 
