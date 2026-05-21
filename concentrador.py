@@ -596,6 +596,8 @@ def emitir_datos():
 
     datos_data = bytearray()
     num_pmu_reportando = 0
+
+    pmus_faltantes = []
     # Conformo seccion de datos a enviar
     for id_pmu in sorted(lista_ids): # Ordenar para consistencia
         try:
@@ -608,9 +610,13 @@ def emitir_datos():
             else:
                 # Genero datos en blanco para esa PMU
                 datos_data.extend(bytearray(longitud_datos[id_pmu]))
+                # --- REGISTRAR PMU FALTANTE ---
+                pmus_faltantes.append(id_pmu)
         except (ValueError, IndexError, KeyError):
             # Genero datos en blanco si algo falla
             datos_data.extend(bytearray(longitud_datos.get(id_pmu, 0)))
+            # --- REGISTRAR PMU FALTANTE ---
+            pmus_faltantes.append(id_pmu)
 
     # Elimino el dato del diccionario para liberar memoria
     del datos[tiempo]
@@ -643,6 +649,12 @@ def emitir_datos():
         # --- VERIFICACIÓN INMEDIATA ---
         if info.rc != mqtt.MQTT_ERR_SUCCESS:
             fallo_mqtt = 1
+
+        # --- NUEVO: IMPRIMIR REPORTE DE FALTANTES EN CONSOLA ---
+        if pmus_faltantes:
+            # Convertimos el tiempo (float) a un texto legible (ej: 2026-05-21 14:09:29.123)
+            ts_str = datetime.fromtimestamp(tiempo).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+            print(f"[{ts_str}] ALERTA - Trama enviada con relleno. Faltan datos de PMUs: {pmus_faltantes}")
     except:
         fallo_mqtt = 1
 
