@@ -609,12 +609,24 @@ def emitir_datos():
                 num_pmu_reportando += 1
             else:
                 # Genero datos en blanco para esa PMU
-                datos_data.extend(bytearray(longitud_datos[id_pmu]))
+                # datos_data.extend(bytearray(longitud_datos[id_pmu]))
+                largo_pmu = longitud_datos.get(id_pmu, 0)
+                dummy_data = bytearray(largo_pmu)
+                #Setear el campo STAT en 0x0100 ---
+                if largo_pmu >= 2:
+                    dummy_data[0:2] = (0x4000).to_bytes(2, 'big')
+                datos_data.extend(dummy_data)    
                 # --- REGISTRAR PMU FALTANTE ---
                 pmus_faltantes.append(id_pmu)
         except (ValueError, IndexError, KeyError):
             # Genero datos en blanco si algo falla
-            datos_data.extend(bytearray(longitud_datos.get(id_pmu, 0)))
+            # datos_data.extend(bytearray(longitud_datos.get(id_pmu, 0)))
+            largo_pmu = longitud_datos.get(id_pmu, 0)
+            dummy_data = bytearray(largo_pmu)
+            #Setear el campo STAT en 0x0100 ---
+            if largo_pmu >= 2:
+                dummy_data[0:2] = (0x4000).to_bytes(2, 'big')
+            datos_data.extend(dummy_data)    
             # --- REGISTRAR PMU FALTANTE ---
             pmus_faltantes.append(id_pmu)
 
